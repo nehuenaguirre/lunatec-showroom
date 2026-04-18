@@ -1,31 +1,46 @@
 import { useContext, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Plus, Minus } from 'lucide-react'; // Quitamos el ícono Check porque ya no mostramos el stock
+import { Link, useLocation } from 'react-router-dom';
+import { Plus, Minus } from 'lucide-react';
 import { CartContext } from '../context/CartContext';
 import ImagenOptimizada from './ImagenOptimizada';
+import { trackEvent } from '../utils/analytics'; // <-- IMPORTAMOS LA ANALÍTICA
 
 export default function ProductCard({ producto }) {
   const { addToCart } = useContext(CartContext);
   const [cantidad, setCantidad] = useState(1);
+  const location = useLocation(); // Para saber en qué página estaba cuando hizo clic
   const codigoImagen = (producto.imagen_codigo || producto.ean || producto.sku || "").toString().trim();
+
+  // Función para registrar cuando hacen clic en la tarjeta
+  const handleProductClick = () => {
+    trackEvent('product_click', location.pathname, { 
+      product_name: producto.nombre 
+    }, producto.id);
+  };
 
   const handleAddToCart = (e) => {
     e.preventDefault(); 
     addToCart(producto, cantidad);
+    
+    // Función para registrar que añadieron al carrito
+    trackEvent('add_to_cart_catalog', location.pathname, { 
+      product_name: producto.nombre,
+      quantity: cantidad,
+      price: producto.precio_venta
+    }, producto.id);
+
     setCantidad(1); 
   };
 
   return (
-    /* NUEVA ANIMACIÓN: hover:-translate-y-1 eleva la tarjeta sutilmente hacia arriba en lugar de hacer zoom */
     <div className="bg-white group transition-all duration-300 border border-gray-100 hover:border-brand-pink/30 hover:shadow-xl hover:-translate-y-1 flex flex-col h-full relative rounded-xl overflow-hidden">
       
-      {/* 1. Contenedor de Imagen */}
-      <Link to={`/producto/${producto.id}`} className="block relative aspect-square bg-white border-b border-gray-100 overflow-hidden">
+      {/* 1. Contenedor de Imagen (Agregamos onClick) */}
+      <Link to={`/producto/${producto.id}`} onClick={handleProductClick} className="block relative aspect-square bg-white border-b border-gray-100 overflow-hidden">
         <ImagenOptimizada 
           codigo={codigoImagen} 
           alt={producto.nombre} 
           width={300} 
-          // Quitamos el scale que rompía los bordes. Ahora solo baja un poco la opacidad al pasar el mouse
           className="w-full h-full object-contain transition-opacity duration-300 group-hover:opacity-80 p-2"
         />
         
@@ -40,17 +55,15 @@ export default function ProductCard({ producto }) {
 
       {/* 2. Información del Producto */}
       <div className="p-3 md:p-4 flex flex-col flex-grow">
-        <Link to={`/producto/${producto.id}`}>
+        {/* Título (Agregamos onClick) */}
+        <Link to={`/producto/${producto.id}`} onClick={handleProductClick}>
           <h3 className="font-bold text-gray-800 text-[10px] md:text-xs leading-tight uppercase line-clamp-2 hover:text-brand-pink transition-colors mb-2 min-h-[2rem]">
             {producto.nombre}
           </h3>
         </Link>
         
-        {/* Aquí eliminamos por completo la sección que decía la cantidad de stock */}
-
-        {/* 3. Precio con Nueva Fuente */}
+        {/* 3. Precio */}
         <div className="mt-auto mb-3">
-          {/* font-mono le da un estilo de números de caja registradora, tracking-tighter los junta para que impacte más */}
           <span className="font-mono text-lg md:text-xl font-black tracking-tighter text-[#73A839]">
             ${Number(producto.precio_venta || 0).toLocaleString('es-AR')}
           </span>
