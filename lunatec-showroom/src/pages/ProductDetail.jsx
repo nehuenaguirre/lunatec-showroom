@@ -1,14 +1,15 @@
 import { useEffect, useState, useContext } from 'react';
 import { useParams, Link, useLocation } from 'react-router-dom';
 import { ShoppingCart, ArrowLeft, MessageCircle } from 'lucide-react';
+import Cookies from 'js-cookie';
 import { supabase } from '../supabase';
 import { CartContext } from '../context/CartContext';
 import ImagenOptimizada from '../components/ImagenOptimizada';
-import { trackEvent } from '../utils/analytics'; // <-- IMPORTAMOS LA ANALÍTICA
+import { trackEvent } from '../utils/analytics';
 
 export default function ProductDetail() {
   const { id } = useParams();
-  const location = useLocation(); // Saber la URL actual
+  const location = useLocation();
   const [producto, setProducto] = useState(null);
   const [loading, setLoading] = useState(true);
   const { addToCart } = useContext(CartContext);
@@ -22,39 +23,57 @@ export default function ProductDetail() {
         .eq('id', id)
         .single();
         
-      if (data) setProducto(data);
+      if (data) {
+        setProducto(data);
+        
+        // Obtenemos el sessionId de la cookie ANTES de usarlo
+        const sessionId = Cookies.get('lunatec_session_id'); 
+        
+        let recentProducts = [];
+        const savedRecent = Cookies.get('lunatec_recent_products');
+        if (savedRecent) {
+          try { recentProducts = JSON.parse(savedRecent); } catch(e) {}
+        }
+        
+        recentProducts = [data.id, ...recentProducts.filter(pid => pid !== data.id)].slice(0, 5);
+        Cookies.set('lunatec_recent_products', JSON.stringify(recentProducts), { expires: 7, path: '/' });
+
+        // Enviamos el evento de analítica
+        trackEvent('product_view', `/producto/${data.id}`, { 
+          product_name: data.nombre,
+          session_id: sessionId // <-- Ahora sí existe esta variable
+        }, String(data.id)); // <-- FUNDAMENTAL: String() convierte el número en texto para que Supabase lo acepte
+      }
       setLoading(false);
     }
     fetchProducto();
   }, [id]);
 
-  // 2. Cronómetro de tiempo en pantalla (Time Spent)
   useEffect(() => {
-    // Si todavía no cargó el producto, no empezamos a contar
     if (!producto) return;
 
-    // Guardamos la hora exacta en la que entró
     const startTime = Date.now();
+    const sessionId = Cookies.get('lunatec_session_id');
 
-    // La función "return" de un useEffect se ejecuta justo cuando el componente se DESTRUYE (el usuario se va)
     return () => {
       const endTime = Date.now();
       const timeSpentInSeconds = Math.round((endTime - startTime) / 1000);
       
-      // Enviamos el dato a Supabase antes de que la página cambie
       trackEvent('time_spent', location.pathname, { 
         seconds: timeSpentInSeconds,
-        product_name: producto.nombre 
+        product_name: producto.nombre,
+        session_id: sessionId
       }, producto.id);
     };
   }, [producto, location.pathname]);
 
-  // 3. Función para añadir al carrito con rastreo
   const handleAddToCart = () => {
     addToCart(producto, 1);
+    const sessionId = Cookies.get('lunatec_session_id');
     trackEvent('add_to_cart_detail', location.pathname, { 
       product_name: producto.nombre,
-      price: producto.precio_venta
+      price: producto.precio_venta,
+      session_id: sessionId
     }, producto.id);
   };
 
@@ -87,8 +106,6 @@ export default function ProductDetail() {
       </Link>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-16 items-start">
-        
-        {/* Imagen */}
         <div className="bg-white rounded-3xl p-4 md:p-12 border border-gray-100 shadow-sm flex items-center justify-center aspect-square overflow-hidden">
           <ImagenOptimizada 
             codigo={codigoImagen} 
@@ -98,7 +115,6 @@ export default function ProductDetail() {
           />
         </div>
 
-        {/* Info del Producto */}
         <div className="flex flex-col h-full">
           <div className="mb-6">
             <span className="bg-gray-100 text-gray-500 text-[10px] font-mono font-bold px-2 py-1 rounded uppercase tracking-widest">
@@ -109,7 +125,6 @@ export default function ProductDetail() {
             </h1>
           </div>
           
-          {/* Precio Mono */}
           <div className="text-5xl md:text-6xl font-mono font-black text-[#73A839] mb-8 pb-8 border-b border-gray-100 tracking-tighter">
             ${Number(producto.precio_venta).toLocaleString("es-AR")}
           </div>
@@ -124,7 +139,6 @@ export default function ProductDetail() {
           <div className="mt-auto space-y-4">
             {producto.stock_actual > 0 ? (
               <>
-                {/* BOTÓN CON RASTREO (Llama a handleAddToCart) */}
                 <button
                   onClick={handleAddToCart}
                   className="w-full py-5 bg-brand-pink hover:bg-brand-dark text-white rounded-2xl font-display font-black text-xl transition-all flex items-center justify-center gap-3 shadow-xl shadow-brand-pink/20 uppercase tracking-tighter"
