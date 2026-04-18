@@ -1,0 +1,10 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-pink: #E95B7F;
+  --color-brand-rose: #C95AAC;
+  --color-brand-violet: #AB58DA;
+  --color-brand-dark: #833B71;
+  --background-image-gradient-brand: linear-gradient(to right, #E95B7F, #C95AAC, #AB58DA, #833B71);
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+}
