@@ -1,16 +1,19 @@
 import { useEffect, useState, useContext } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useLocation } from 'react-router-dom';
 import { ShoppingCart, ArrowLeft, MessageCircle } from 'lucide-react';
 import { supabase } from '../supabase';
 import { CartContext } from '../context/CartContext';
 import ImagenOptimizada from '../components/ImagenOptimizada';
+import { trackEvent } from '../utils/analytics'; // <-- IMPORTAMOS LA ANALÍTICA
 
 export default function ProductDetail() {
   const { id } = useParams();
+  const location = useLocation(); // Saber la URL actual
   const [producto, setProducto] = useState(null);
   const [loading, setLoading] = useState(true);
   const { addToCart } = useContext(CartContext);
 
+  // 1. Cargar el producto
   useEffect(() => {
     async function fetchProducto() {
       const { data } = await supabase
@@ -24,6 +27,36 @@ export default function ProductDetail() {
     }
     fetchProducto();
   }, [id]);
+
+  // 2. Cronómetro de tiempo en pantalla (Time Spent)
+  useEffect(() => {
+    // Si todavía no cargó el producto, no empezamos a contar
+    if (!producto) return;
+
+    // Guardamos la hora exacta en la que entró
+    const startTime = Date.now();
+
+    // La función "return" de un useEffect se ejecuta justo cuando el componente se DESTRUYE (el usuario se va)
+    return () => {
+      const endTime = Date.now();
+      const timeSpentInSeconds = Math.round((endTime - startTime) / 1000);
+      
+      // Enviamos el dato a Supabase antes de que la página cambie
+      trackEvent('time_spent', location.pathname, { 
+        seconds: timeSpentInSeconds,
+        product_name: producto.nombre 
+      }, producto.id);
+    };
+  }, [producto, location.pathname]);
+
+  // 3. Función para añadir al carrito con rastreo
+  const handleAddToCart = () => {
+    addToCart(producto, 1);
+    trackEvent('add_to_cart_detail', location.pathname, { 
+      product_name: producto.nombre,
+      price: producto.precio_venta
+    }, producto.id);
+  };
 
   if (loading) {
     return (
@@ -91,8 +124,9 @@ export default function ProductDetail() {
           <div className="mt-auto space-y-4">
             {producto.stock_actual > 0 ? (
               <>
+                {/* BOTÓN CON RASTREO (Llama a handleAddToCart) */}
                 <button
-                  onClick={() => addToCart(producto, 1)}
+                  onClick={handleAddToCart}
                   className="w-full py-5 bg-brand-pink hover:bg-brand-dark text-white rounded-2xl font-display font-black text-xl transition-all flex items-center justify-center gap-3 shadow-xl shadow-brand-pink/20 uppercase tracking-tighter"
                 >
                   <ShoppingCart className="w-6 h-6" />

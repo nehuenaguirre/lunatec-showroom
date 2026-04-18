@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { supabase } from '../supabase';
 import CategoryGrid from '../components/CategoryGrid';
 import ProductCard from '../components/ProductCard';
+import { trackEvent } from '../utils/analytics'; // <-- IMPORTAMOS LA ANALÍTICA
 
 export default function Home() {
   const [categorias, setCategorias] = useState([]);
@@ -47,7 +48,14 @@ export default function Home() {
         .order('id', { ascending: false })
         .range(from, to);
 
-      if (data) setProductos(data);
+      if (data) {
+        setProductos(data);
+        // <-- EVENTO DE RASTREO: Registramos la paginación (evitamos registrar la pág 1 en la carga inicial)
+        if (paginaActual > 1) {
+          trackEvent('pagination', '/', { page: paginaActual });
+        }
+      }
+      
       setLoading(false);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -55,7 +63,7 @@ export default function Home() {
   }, [paginaActual]);
 
   return (
-    <div className="py-8 bg-gray-50 min-h-screen font-sans"> {/* Fuente base Inter */}
+    <div className="py-8 bg-gray-50 min-h-screen font-sans">
       
       {/* SECCIÓN DE BANNERS */}
       <div className="max-w-7xl mx-auto px-4 mb-12">
@@ -90,7 +98,6 @@ export default function Home() {
 
       {/* CATÁLOGO GENERAL */}
       <div className="max-w-7xl mx-auto px-4 mt-16 mb-8" id="catalogo">
-        {/* TÍTULO SECCIÓN: PRODUCTOS DESTACADOS */}
         <h3 className="text-xl md:text-2xl font-display font-black text-gray-900 mb-8 uppercase tracking-tighter border-l-4 border-brand-pink pl-4">
           Productos Destacados
         </h3>
