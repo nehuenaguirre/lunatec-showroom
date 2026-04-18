@@ -1,15 +1,28 @@
 import { useContext, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Trash2, Plus, Minus, ArrowLeft, Store, Truck, X } from 'lucide-react';
+import Cookies from 'js-cookie'; // <-- IMPORTAMOS LAS COOKIES
 import { CartContext } from '../context/CartContext';
 import ImagenOptimizada from '../components/ImagenOptimizada';
+import { trackEvent } from '../utils/analytics'; // <-- IMPORTAMOS LA ANALÍTICA
 
 export default function CartFull() {
   const { cart, removeFromCart, updateQuantity, cartTotal } = useContext(CartContext);
   const [metodoEnvio, setMetodoEnvio] = useState('tienda'); // 'tienda' o 'domicilio'
+  const location = useLocation(); // <-- Necesitamos location para el rastreo
   const numeroWhatsApp = "5493815135998";
 
   const enviarPedido = () => {
+    // --- 1. REGISTRO EN ANALÍTICAS ANTES DE SALIR A WHATSAPP ---
+    const sessionId = Cookies.get('lunatec_session_id');
+    trackEvent('checkout_start', location.pathname, {
+      cart_total: cartTotal,
+      item_count: cart.length,
+      shipping_method: metodoEnvio,
+      session_id: sessionId
+    });
+
+    // --- 2. LÓGICA DE ARMADO DEL MENSAJE DE WHATSAPP ---
     let texto = "🛒 *NUEVO PEDIDO - LUNATEC*\n\n";
     cart.forEach(item => {
       texto += `▪ ${item.quantity}x ${item.nombre} ($${item.precio_venta})\n`;
