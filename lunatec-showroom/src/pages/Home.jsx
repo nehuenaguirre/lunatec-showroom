@@ -13,9 +13,9 @@ export default function Home() {
   const [paginaActual, setPaginaActual] = useState(1);
   const [totalPaginas, setTotalPaginas] = useState(1);
 
-  // URLs de tus banners (Reemplazá con tus links de Supabase)
   const BANNER_PRINCIPAL = "https://qwyoqfcaepmqzdzzwmlh.supabase.co/storage/v1/object/public/images/banner1.webp";
   const BANNER_SECUNDARIO = "https://qwyoqfcaepmqzdzzwmlh.supabase.co/storage/v1/object/public/images/banner3.webp";
+  const BANNER_FOOTER = "https://qwyoqfcaepmqzdzzwmlh.supabase.co/storage/v1/object/public/images/banner5.webp";
 
   useEffect(() => {
     async function fetchCategorias() {
@@ -55,45 +55,44 @@ export default function Home() {
   }, [paginaActual]);
 
   return (
-    <div className="py-8 bg-gray-50 min-h-screen">
+    <div className="py-8 bg-gray-50 min-h-screen font-sans"> {/* Fuente base Inter */}
+      
       {/* SECCIÓN DE BANNERS */}
       <div className="max-w-7xl mx-auto px-4 mb-12">
-        {/* Cambiamos flex-col md:flex-row a block md:flex para que en mobile ocupe el ancho completo */}
         <div className="block md:flex gap-4">
-          
-          {/* Banner Principal (Se adapta al ancho de la imagen gigante) */}
           <div className="flex-1 relative rounded-2xl overflow-hidden shadow-md group border-2 border-brand-pink/20 bg-white mb-4 md:mb-0">
-            {/* ACÁ ESTÁ EL CAMBIO: w-full h-auto y object-contain para encuadre total */}
             <img 
               src={BANNER_PRINCIPAL} 
               alt="Promoción Principal" 
               className="w-full h-auto object-contain object-center transition-transform duration-700 group-hover:scale-105"
-              loading="eager" // Se carga de inmediato por ser lo primero que se ve
+              loading="eager"
             />
           </div>
 
-          {/* Banner Secundario (Visible en desktop, mantiene un tamaño fijo) */}
           <div className="hidden md:block w-1/3 h-[200px] md:h-auto relative rounded-2xl overflow-hidden shadow-md group">
             <img 
               src={BANNER_SECUNDARIO} 
               alt="Promoción Secundaria" 
-              // En este mantenemos object-cover porque es más decorativo
               className="w-full h-full object-cover object-center transition-transform duration-700 group-hover:scale-105"
             />
           </div>
-
         </div>
       </div>
 
+      {/* TÍTULO SECCIÓN: EXPLORAR CATEGORÍAS */}
       <div className="max-w-7xl mx-auto px-4 mb-6">
-        <h3 className="text-xl font-black text-gray-900 uppercase tracking-wide">Explorar Categorías</h3>
+        <h3 className="text-xl md:text-2xl font-display font-black text-gray-900 uppercase tracking-tighter">
+          Explorar Categorías
+        </h3>
       </div>
 
       <CategoryGrid categorias={categorias} />
 
-      <div className="max-w-7xl mx-auto px-4 mt-12 mb-8" id="catalogo">
-        <h3 className="text-xl font-black text-gray-900 mb-6 uppercase tracking-wide">
-          Catálogo General
+      {/* CATÁLOGO GENERAL */}
+      <div className="max-w-7xl mx-auto px-4 mt-16 mb-8" id="catalogo">
+        {/* TÍTULO SECCIÓN: PRODUCTOS DESTACADOS */}
+        <h3 className="text-xl md:text-2xl font-display font-black text-gray-900 mb-8 uppercase tracking-tighter border-l-4 border-brand-pink pl-4">
+          Productos Destacados
         </h3>
         
         {loading ? (
@@ -108,34 +107,42 @@ export default function Home() {
               ))}
             </div>
 
-            {/* Controles de Paginación */}
+            {/* Paginación */}
             {totalPaginas > 1 && (
-              <div className="flex items-center justify-center gap-4 mt-12">
+              <div className="flex items-center justify-center gap-4 mt-16 mb-16">
                 <button
                   onClick={() => setPaginaActual(p => Math.max(1, p - 1))}
                   disabled={paginaActual === 1}
-                  className={`p-2 rounded border flex items-center justify-center transition-all ${
-                    paginaActual === 1 ? "bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200" : "bg-white text-gray-800 hover:border-brand-pink hover:text-brand-pink"
-                  }`}
+                  className="p-2 rounded-xl border-2 bg-white text-gray-800 hover:border-brand-pink hover:text-brand-pink transition-all disabled:opacity-30 disabled:cursor-not-allowed"
                 >
-                  <ChevronLeft size={20} />
+                  <ChevronLeft size={24} />
                 </button>
 
-                <span className="font-bold text-gray-600 text-sm">
+                <span className="font-display font-bold text-gray-900 text-sm uppercase tracking-widest bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-100">
                   Página {paginaActual} de {totalPaginas}
                 </span>
 
                 <button
                   onClick={() => setPaginaActual(p => Math.min(totalPaginas, p + 1))}
                   disabled={paginaActual === totalPaginas}
-                  className={`p-2 rounded border flex items-center justify-center transition-all ${
-                    paginaActual === totalPaginas ? "bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200" : "bg-white text-gray-800 hover:border-brand-pink hover:text-brand-pink"
-                  }`}
+                  className="p-2 rounded-xl border-2 bg-white text-gray-800 hover:border-brand-pink hover:text-brand-pink transition-all disabled:opacity-30 disabled:cursor-not-allowed"
                 >
-                  <ChevronRight size={20} />
+                  <ChevronRight size={24} />
                 </button>
               </div>
             )}
+
+            {/* Banner Final */}
+            <div className="max-w-7xl mx-auto mt-20 mb-12">
+              <div className="w-full overflow-hidden rounded-2xl flex justify-center">
+                <img 
+                  src={BANNER_FOOTER} 
+                  alt="Promoción Final" 
+                  className="w-full h-auto block rounded-2xl transition-transform duration-500 hover:scale-[1.01]"
+                  loading="lazy"
+                />
+              </div>
+            </div>
           </>
         )}
       </div>
