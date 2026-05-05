@@ -1,28 +1,30 @@
 import { useContext, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Trash2, Plus, Minus, ArrowLeft, Store, Truck, X } from 'lucide-react';
-import Cookies from 'js-cookie'; // <-- IMPORTAMOS LAS COOKIES
+import { Trash2, Plus, Minus, ArrowLeft, Store, Truck, X, CreditCard } from 'lucide-react';
+import Cookies from 'js-cookie'; 
 import { CartContext } from '../context/CartContext';
 import ImagenOptimizada from '../components/ImagenOptimizada';
-import { trackEvent } from '../utils/analytics'; // <-- IMPORTAMOS LA ANALÍTICA
+import { trackEvent } from '../utils/analytics'; 
+import { supabase } from '../supabase'; // <-- IMPORTAMOS SUPABASE PARA MP
 
 export default function CartFull() {
   const { cart, removeFromCart, updateQuantity, cartTotal } = useContext(CartContext);
-  const [metodoEnvio, setMetodoEnvio] = useState('tienda'); // 'tienda' o 'domicilio'
-  const location = useLocation(); // <-- Necesitamos location para el rastreo
+  const [metodoEnvio, setMetodoEnvio] = useState('tienda'); 
+  const [loadingMP, setLoadingMP] = useState(false); // <-- ESTADO PARA CARGA DE MP
+  const location = useLocation(); 
   const numeroWhatsApp = "5493815135998";
 
+  // --- LÓGICA DE WHATSAPP ---
   const enviarPedido = () => {
-    // --- 1. REGISTRO EN ANALÍTICAS ANTES DE SALIR A WHATSAPP ---
     const sessionId = Cookies.get('lunatec_session_id');
     trackEvent('checkout_start', location.pathname, {
       cart_total: cartTotal,
       item_count: cart.length,
       shipping_method: metodoEnvio,
-      session_id: sessionId
+      session_id: sessionId,
+      payment_method: 'whatsapp'
     });
 
-    // --- 2. LÓGICA DE ARMADO DEL MENSAJE DE WHATSAPP ---
     let texto = "🛒 *NUEVO PEDIDO - LUNATEC*\n\n";
     cart.forEach(item => {
       texto += `▪ ${item.quantity}x ${item.nombre} ($${item.precio_venta})\n`;
@@ -31,6 +33,36 @@ export default function CartFull() {
     texto += `\n💰 *TOTAL ESTIMADO: $${cartTotal.toLocaleString('es-AR')}*\n\n`;
     texto += "Hola, quiero avanzar con esta compra.";
     window.open(`https://wa.me/${numeroWhatsApp}?text=${encodeURIComponent(texto)}`, '_blank');
+  };
+
+  // --- NUEVA LÓGICA DE MERCADO PAGO ---
+  const handlePagoMercadoPago = async () => {
+    if (cart.length === 0) return;
+    setLoadingMP(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('mp-checkout', {
+        body: { cartItems: cart }
+      });
+
+      // Si Supabase falla gravemente a nivel de red
+      if (error) throw new Error(error.message);
+
+      // Si todo salió bien
+      if (data && data.ok) {
+        window.location.href = data.init_point;
+      } 
+      // Aquí atrapamos el error exacto que nosotros programamos
+      else if (data && !data.ok) {
+        alert("Atención: " + data.errorDetallado);
+      }
+      
+    } catch (error) {
+      console.error("Detalle del error:", error);
+      alert("Error de red: " + error.message);
+    } finally {
+      setLoadingMP(false);
+    }
   };
 
   if (cart.length === 0) {
@@ -147,9 +179,28 @@ export default function CartFull() {
               <span className="text-2xl font-black text-brand-dark">${cartTotal.toLocaleString('es-AR')}</span>
             </div>
 
-            <button onClick={enviarPedido} className="w-full py-4 bg-gradient-brand text-white font-bold text-lg rounded-xl shadow-md hover:shadow-lg transition-all tracking-wide">
-              FINALIZAR COMPRA
-            </button>
+            {/* BOTONES DE PAGO */}
+            <div className="space-y-3">
+              <button 
+                onClick={handlePagoMercadoPago} 
+                disabled={loadingMP}
+                className="w-full flex items-center justify-center gap-2 py-4 bg-[#009EE3] text-white font-bold text-lg rounded-xl shadow-md hover:bg-[#0080B7] transition-all tracking-wide disabled:opacity-70"
+              >
+                {loadingMP ? 'Procesando...' : (
+                  <>
+                    <CreditCard className="w-5 h-5" />
+                    PAGAR CON MERCADO PAGO
+                  </>
+                )}
+              </button>
+
+              <button 
+                onClick={enviarPedido} 
+                className="w-full py-4 bg-gray-900 text-white font-bold text-[15px] rounded-xl hover:bg-gray-800 transition-all tracking-wide"
+              >
+                Acordar por WhatsApp
+              </button>
+            </div>
             
             <Link to="/" className="mt-6 flex justify-center items-center text-sm font-bold text-gray-400 hover:text-brand-pink transition-colors">
               <ArrowLeft className="w-4 h-4 mr-2" /> Seguir comprando

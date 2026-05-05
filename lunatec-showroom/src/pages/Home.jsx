@@ -1,34 +1,123 @@
-import { useEffect, useState } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useEffect, useState, useRef } from 'react';import Cookies from 'js-cookie';
 import { supabase } from '../supabase';
 import CategoryGrid from '../components/CategoryGrid';
 import ProductCard from '../components/ProductCard';
-import { trackEvent } from '../utils/analytics'; // <-- IMPORTAMOS LA ANALÍTICA
+import { trackEvent } from '../utils/analytics';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+
+// --- NUEVO COMPONENTE: Carrusel Horizontal para las Colecciones ---
+// --- COMPONENTE ACTUALIZADO: Carrusel Horizontal con Flechas ---
+const CarruselProductos = ({ titulo, productos, borderClass }) => {
+  const scrollRef = useRef(null);
+
+  const scroll = (direccion) => {
+    if (scrollRef.current) {
+      const { current } = scrollRef;
+      // Calcula cuánto scrollear (la mitad del ancho visible)
+      const scrollAmount = direccion === 'izq' ? -current.offsetWidth / 2 : current.offsetWidth / 2;
+      current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+  };
+
+  if (!productos || productos.length === 0) return null;
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 mt-12 mb-4 relative" id={`seccion-${titulo.toLowerCase().replace(' ', '-')}`}>
+      <h3 className={`text-xl md:text-2xl font-display font-black text-gray-900 mb-6 uppercase tracking-tighter border-l-4 ${borderClass} pl-4`}>
+        {titulo}
+      </h3>
+
+      {/* Botón Scroll Izquierda (Se oculta en mobile) */}
+      <button 
+        onClick={() => scroll('izq')} 
+        className="hidden md:flex absolute left-0 top-[55%] -translate-y-1/2 z-10 bg-white/90 backdrop-blur rounded-full p-2.5 shadow-md border border-gray-100 text-gray-500 hover:text-brand-pink transition-all"
+        aria-label="Desplazar a la izquierda"
+      >
+        <ChevronLeft size={22} strokeWidth={2.5} />
+      </button>
+
+      {/* Botón Scroll Derecha (Se oculta en mobile) */}
+      <button 
+        onClick={() => scroll('der')} 
+        className="hidden md:flex absolute right-0 top-[55%] -translate-y-1/2 z-10 bg-white/90 backdrop-blur rounded-full p-2.5 shadow-md border border-gray-100 text-gray-500 hover:text-brand-pink transition-all"
+        aria-label="Desplazar a la derecha"
+      >
+        <ChevronRight size={22} strokeWidth={2.5} />
+      </button>
+
+      {/* Contenedor scrolleable */}
+      <div 
+        ref={scrollRef}
+        className="flex gap-3 md:gap-4 overflow-x-auto pb-6 pt-2 px-1 [&::-webkit-scrollbar]:hidden scroll-smooth snap-x snap-mandatory"
+      >
+        {/* Agregamos el 'index' y modificamos el 'key' */}
+        {productos.map((prod, index) => (
+          <div key={`${titulo}-${prod.id}-${index}`} className="min-w-[160px] md:min-w-[220px] w-[45%] md:w-[220px] snap-start flex-shrink-0">
+            <ProductCard producto={prod} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 
 export default function Home() {
   const [categorias, setCategorias] = useState([]);
   const [productos, setProductos] = useState([]);
   const [loading, setLoading] = useState(true);
   
+  // --- NUEVOS ESTADOS PARA COLECCIONES DINÁMICAS ---
+  const [nuevos, setNuevos] = useState([]);
+  const [destacados, setDestacados] = useState([]);
+  const [ofertas, setOfertas] = useState([]);
+  
   const PRODUCTOS_POR_PAGINA = 20;
-  const [paginaActual, setPaginaActual] = useState(1);
+  
+  const [paginaActual, setPaginaActual] = useState(() => {
+    const savedPage = Cookies.get('lunatec_home_page');
+    return savedPage ? parseInt(savedPage, 10) : 1;
+  });
+  
   const [totalPaginas, setTotalPaginas] = useState(1);
 
   const BANNER_PRINCIPAL = "https://qwyoqfcaepmqzdzzwmlh.supabase.co/storage/v1/object/public/images/banner1.webp";
   const BANNER_SECUNDARIO = "https://qwyoqfcaepmqzdzzwmlh.supabase.co/storage/v1/object/public/images/banner3.webp";
   const BANNER_FOOTER = "https://qwyoqfcaepmqzdzzwmlh.supabase.co/storage/v1/object/public/images/banner5.webp";
 
+  // Carga de Categorías y Colecciones Dinámicas
   useEffect(() => {
-    async function fetchCategorias() {
-      const { data } = await supabase.from('categorias').select('*');
-      if (data) setCategorias(data);
+    async function fetchInicial() {
+      // 1. Cargar categorías
+      const { data: catData } = await supabase.from('categorias').select('*');
+      if (catData) setCategorias(catData);
+
+      // 2. Cargar Colecciones Dinámicas (Usamos Promise.all para que carguen al mismo tiempo y sea más rápido)
+      const fetchVista = async (nombreVista) => {
+        const { data } = await supabase.from(nombreVista).select('*');
+        return data || [];
+      };
+
+      const [dataNuevos, dataDestacados, dataOfertas] = await Promise.all([
+        fetchVista('vista_coleccion_nuevos'),
+        fetchVista('vista_coleccion_destacados'),
+        fetchVista('vista_coleccion_ofertas')
+      ]);
+
+      setNuevos(dataNuevos);
+      setDestacados(dataDestacados);
+      setOfertas(dataOfertas);
     }
-    fetchCategorias();
+    fetchInicial();
   }, []);
 
+  // Carga del catálogo principal paginado
   useEffect(() => {
     async function fetchProductos() {
       setLoading(true);
+      
+      Cookies.set('lunatec_home_page', paginaActual, { expires: 1/24, path: '/' });
+
       const { count } = await supabase
         .from('productos')
         .select('*', { count: 'exact', head: true })
@@ -50,9 +139,9 @@ export default function Home() {
 
       if (data) {
         setProductos(data);
-        // <-- EVENTO DE RASTREO: Registramos la paginación (evitamos registrar la pág 1 en la carga inicial)
+        const sessionId = Cookies.get('lunatec_session_id');
         if (paginaActual > 1) {
-          trackEvent('pagination', '/', { page: paginaActual });
+          trackEvent('pagination', '/', { page: paginaActual, session_id: sessionId });
         }
       }
       
@@ -64,8 +153,6 @@ export default function Home() {
 
   return (
     <div className="py-8 bg-gray-50 min-h-screen font-sans">
-      
-      {/* SECCIÓN DE BANNERS */}
       <div className="max-w-7xl mx-auto px-4 mb-12">
         <div className="block md:flex gap-4">
           <div className="flex-1 relative rounded-2xl overflow-hidden shadow-md group border-2 border-brand-pink/20 bg-white mb-4 md:mb-0">
@@ -76,7 +163,6 @@ export default function Home() {
               loading="eager"
             />
           </div>
-
           <div className="hidden md:block w-1/3 h-[200px] md:h-auto relative rounded-2xl overflow-hidden shadow-md group">
             <img 
               src={BANNER_SECUNDARIO} 
@@ -87,7 +173,6 @@ export default function Home() {
         </div>
       </div>
 
-      {/* TÍTULO SECCIÓN: EXPLORAR CATEGORÍAS */}
       <div className="max-w-7xl mx-auto px-4 mb-6">
         <h3 className="text-xl md:text-2xl font-display font-black text-gray-900 uppercase tracking-tighter">
           Explorar Categorías
@@ -96,10 +181,29 @@ export default function Home() {
 
       <CategoryGrid categorias={categorias} />
 
-      {/* CATÁLOGO GENERAL */}
+      {/* --- COLECCIONES DINÁMICAS (Se ocultan automáticamente si no hay productos) --- */}
+      <CarruselProductos 
+        titulo="🔥 Ofertas Especiales" 
+        productos={ofertas} 
+        borderClass="border-red-500" 
+      />
+      
+      <CarruselProductos 
+        titulo="⭐ Los Más Elegidos" 
+        productos={destacados} 
+        borderClass="border-yellow-400" 
+      />
+      
+      <CarruselProductos 
+        titulo="✨ Nuevos Ingresos" 
+        productos={nuevos} 
+        borderClass="border-blue-500" 
+      />
+      {/* ----------------------------------------------------------------------------- */}
+
       <div className="max-w-7xl mx-auto px-4 mt-16 mb-8" id="catalogo">
-        <h3 className="text-xl md:text-2xl font-display font-black text-gray-900 mb-8 uppercase tracking-tighter border-l-4 border-brand-pink pl-4">
-          Productos Destacados
+        <h3 className="text-xl md:text-2xl font-display font-black text-gray-900 mb-8 uppercase tracking-tighter border-l-4 border-gray-800 pl-4">
+          Catálogo Completo
         </h3>
         
         {loading ? (
@@ -114,7 +218,6 @@ export default function Home() {
               ))}
             </div>
 
-            {/* Paginación */}
             {totalPaginas > 1 && (
               <div className="flex items-center justify-center gap-4 mt-16 mb-16">
                 <button
@@ -139,7 +242,6 @@ export default function Home() {
               </div>
             )}
 
-            {/* Banner Final */}
             <div className="max-w-7xl mx-auto mt-20 mb-12">
               <div className="w-full overflow-hidden rounded-2xl flex justify-center">
                 <img 

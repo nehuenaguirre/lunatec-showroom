@@ -7,7 +7,6 @@ import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import CartSidebar from './components/CartSidebar';
 import { trackEvent } from './utils/analytics';
-import AdminAnalytics from './pages/AdminAnalytics';
 
 import Home from './pages/Home';
 import CategoryView from './pages/CategoryView';
@@ -63,7 +62,6 @@ function App() {
               <Route path="/categoria/:id" element={<CategoryView />} />
               <Route path="/producto/:id" element={<ProductDetail />} />
               <Route path="/carrito" element={<CartFull />} />
-              <Route path="/admin/stats" element={<AdminAnalytics />} />
             </Routes>
           </main>
 
