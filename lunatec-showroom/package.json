@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@mercadopago/sdk-react": "^1.0.7",
     "@supabase/supabase-js": "^2.103.3",
     "framer-motion": "^12.38.0",
     "js-cookie": "^3.0.5",
@@ -32,6 +33,7 @@
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.4.0",
     "postcss": "^8.5.10",
+    "supabase": "^2.95.6",
     "tailwindcss": "^4.2.2",
     "vite": "^8.0.4"
   }
