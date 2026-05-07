@@ -6,6 +6,10 @@ import { CartContext } from '../context/CartContext';
 import ImagenOptimizada from '../components/ImagenOptimizada';
 import { trackEvent } from '../utils/analytics'; 
 import { supabase } from '../supabase'; // <-- IMPORTAMOS SUPABASE PARA MP
+import { initMercadoPago } from '@mercadopago/sdk-react';
+initMercadoPago(import.meta.env.VITE_MP_PUBLIC_KEY, { locale: 'es-AR' });
+import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 export default function CartFull() {
   const { cart, removeFromCart, updateQuantity, cartTotal } = useContext(CartContext);
@@ -13,6 +17,8 @@ export default function CartFull() {
   const [loadingMP, setLoadingMP] = useState(false); // <-- ESTADO PARA CARGA DE MP
   const location = useLocation(); 
   const numeroWhatsApp = "5493815135998";
+  const { user } = useAuth();
+  const navigate = useNavigate();
 
   // --- LÓGICA DE WHATSAPP ---
   const enviarPedido = () => {
@@ -40,9 +46,20 @@ export default function CartFull() {
     if (cart.length === 0) return;
     setLoadingMP(true);
 
+    if (!user) {
+      // Le pasamos el 'pathname' actual para que el Login sepa a dónde devolverlo
+      navigate('/login', { state: { from: location } });
+      return; // Detenemos la ejecución aquí
+    }
+
+    setLoadingMP(true);
+
     try {
       const { data, error } = await supabase.functions.invoke('mp-checkout', {
-        body: { cartItems: cart }
+        body: { 
+          cartItems: cart,
+          userId: user.id
+        }
       });
 
       // Si Supabase falla gravemente a nivel de red

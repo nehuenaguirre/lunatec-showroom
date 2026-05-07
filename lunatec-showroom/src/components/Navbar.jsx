@@ -1,18 +1,19 @@
 import { useContext, useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { ShoppingCart, Search, Menu, Truck, ShieldCheck, X, Clock } from 'lucide-react';
+import { ShoppingCart, Search, Menu, Truck, ShieldCheck, X, Clock, User } from 'lucide-react';
 import Cookies from 'js-cookie';
 import { CartContext } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 import { trackEvent } from '../utils/analytics';
 import { supabase } from '../supabase'; 
 import ImagenOptimizada from './ImagenOptimizada'; 
 
 export default function Navbar() {
   const { cartCount, setIsSidebarOpen } = useContext(CartContext);
+  const { user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   
-  // Estados para la Búsqueda
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [recentSearches, setRecentSearches] = useState([]);
@@ -20,7 +21,6 @@ export default function Navbar() {
   const [showDropdown, setShowDropdown] = useState(false);
   const searchRef = useRef(null);
 
-  // Estados para las Categorías
   const [categorias, setCategorias] = useState([]);
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const categoryRef = useRef(null);
@@ -125,10 +125,16 @@ export default function Navbar() {
     setSearchQuery("");
   };
 
+  const handleUserClick = () => {
+    if (user) {
+      navigate('/mi-cuenta');
+    } else {
+      navigate('/login');
+    }
+  };
+
   return (
     <header className="sticky top-0 z-40 shadow-lg font-sans w-full">
-      
-      {/* BARRA SUPERIOR (Escritorio) */}
       <div className="bg-[#612A53] text-white/90 text-[10px] md:text-[11px] py-1.5 hidden md:block w-full">
         <div className="w-full px-4 md:px-6 flex justify-between items-center tracking-wider uppercase">
           <div className="flex items-center gap-4">
@@ -139,14 +145,10 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* NAVBAR PRINCIPAL */}
       <div className="bg-gradient-brand w-full">
         <div className="w-full px-4 md:px-6 py-3 md:py-4 flex flex-wrap md:flex-nowrap items-center justify-between gap-y-3 md:gap-x-6">
           
-          {/* LADO IZQUIERDO (Escritorio) / FILA SUPERIOR (Móvil) */}
           <div className="flex items-center justify-between md:justify-start w-full md:w-[25%] order-1 shrink-0 gap-2 md:gap-6">
-            
-            {/* 1. Botón Categorías (Izquierda en móvil, a la derecha del Logo en Escritorio usando 'order') */}
             <div className="relative shrink-0 order-1 md:order-2" ref={categoryRef}>
               <button 
                 onClick={() => setIsCategoryOpen(!isCategoryOpen)}
@@ -160,7 +162,6 @@ export default function Navbar() {
                 <span className="hidden lg:inline font-display font-black uppercase text-xs tracking-tight">Categorías</span>
               </button>
 
-              {/* Menú Desplegable de Categorías */}
               <div 
                 className={`absolute top-full mt-3 w-[260px] bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50 origin-top-left transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] left-0 ${
                   isCategoryOpen 
@@ -201,23 +202,26 @@ export default function Navbar() {
               </div>
             </div>
 
-            {/* 2. Logo (Centro absoluto en móvil gracias a flex-1, a la izquierda en Escritorio) */}
             <Link to="/" className="flex-1 md:flex-none flex justify-center md:justify-start order-2 md:order-1 transition-transform hover:scale-105 shrink-0 block">
               <img src="/logo.png" alt="LunaTec Logo" className="h-7 md:h-12 object-contain drop-shadow-lg" />
             </Link>
 
-            {/* 3. Botón Carrito MÓVIL (Aparece a la derecha en celular, completamente oculto en Escritorio) */}
-            <button onClick={handleOpenCart} className="md:hidden order-3 relative flex items-center justify-center w-10 h-10 bg-white/10 hover:bg-white/20 border border-white/20 rounded-full text-white transition-all shadow-sm shrink-0">
-              <ShoppingCart size={20} />
-              {cartCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-white text-brand-dark text-[10px] font-black w-4 h-4 flex items-center justify-center rounded-full shadow-lg border border-brand-pink font-display">
-                  {cartCount}
-                </span>
-              )}
-            </button>
+            {/* BOTONES MÓVIL */}
+            <div className="md:hidden order-3 flex items-center gap-2">
+              <button onClick={handleUserClick} className="relative flex items-center justify-center w-10 h-10 bg-white/10 hover:bg-white/20 border border-white/20 rounded-full text-white transition-all shadow-sm shrink-0">
+                <User size={20} />
+              </button>
+              <button onClick={handleOpenCart} className="relative flex items-center justify-center w-10 h-10 bg-white/10 hover:bg-white/20 border border-white/20 rounded-full text-white transition-all shadow-sm shrink-0">
+                <ShoppingCart size={20} />
+                {cartCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-white text-brand-dark text-[10px] font-black w-4 h-4 flex items-center justify-center rounded-full shadow-lg border border-brand-pink font-display">
+                    {cartCount}
+                  </span>
+                )}
+              </button>
+            </div>
           </div>
 
-          {/* CENTRO: Buscador */}
           <div ref={searchRef} className="w-full md:w-[50%] relative order-3 md:order-2 px-0 md:px-4">
             <div className="relative w-full max-w-3xl mx-auto">
               <input 
@@ -227,7 +231,7 @@ export default function Navbar() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={handleKeyDown}
                 onFocus={() => setShowDropdown(true)}
-                className="w-full bg-white text-gray-900 border-none rounded-full py-2.5 md:py-2.5 pl-5 pr-12 outline-none focus:ring-4 focus:ring-white/40 shadow-md transition-all text-sm font-medium font-sans"
+                className="w-full bg-white text-gray-900 border-none rounded-full py-2.5 pl-5 pr-12 outline-none focus:ring-4 focus:ring-white/40 shadow-md transition-all text-sm font-medium"
               />
               {searchQuery.length > 0 ? (
                 <button onClick={() => { setSearchQuery(""); setShowDropdown(false); }} className="absolute right-1.5 top-1.5 bottom-1.5 aspect-square bg-gray-200 hover:bg-gray-300 text-gray-600 rounded-full flex items-center justify-center transition-colors shadow-sm">
@@ -240,7 +244,6 @@ export default function Navbar() {
               )}
             </div>
 
-            {/* Dropdown Resultados... */}
             {showDropdown && (
               <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-50 flex flex-col max-w-3xl mx-auto">
                 {searchQuery.length === 0 && recentSearches.length > 0 && (
@@ -284,13 +287,18 @@ export default function Navbar() {
             )}
           </div>
 
-          {/* LADO DERECHO: Carrito ESCRITORIO (Oculto en celular, aparece como pastilla grande a la derecha en PC) */}
-          <div className="hidden md:flex items-center justify-end w-full md:w-[25%] order-2 md:order-3 shrink-0">
-            <button onClick={handleOpenCart} className="relative flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 p-2 md:px-5 md:py-2.5 rounded-full text-white transition-all shadow-sm group">
-              <ShoppingCart size={22} className="md:w-[20px] md:h-[20px] group-hover:scale-110 transition-transform" />
-              <span className="font-display font-black text-xs uppercase tracking-tight hidden sm:block">Mi Carrito</span>
+          {/* BOTONES ESCRITORIO */}
+          <div className="hidden md:flex items-center justify-end w-full md:w-[25%] order-2 md:order-3 shrink-0 gap-3">
+            <button onClick={handleUserClick} className="relative flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 px-5 py-2.5 rounded-full text-white transition-all shadow-sm group">
+              <User size={20} className="group-hover:scale-110 transition-transform" />
+              <span className="font-display font-black text-xs uppercase tracking-tight truncate max-w-[100px]">
+                {user ? (user.user_metadata?.nombre?.split(' ')[0] || 'Mi Cuenta') : 'Ingresar'}
+              </span>
+            </button>
+            <button onClick={handleOpenCart} className="relative flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 px-5 py-2.5 rounded-full text-white transition-all shadow-sm group">
+              <ShoppingCart size={20} className="group-hover:scale-110 transition-transform" />
               {cartCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-white text-brand-dark text-[10px] md:text-[11px] font-black w-5 h-5 flex items-center justify-center rounded-full shadow-lg border border-brand-pink font-display">
+                <span className="absolute -top-1 -right-1 bg-white text-brand-dark text-[11px] font-black w-5 h-5 flex items-center justify-center rounded-full shadow-lg border border-brand-pink font-display">
                   {cartCount}
                 </span>
               )}
