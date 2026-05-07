@@ -13,9 +13,9 @@ export function CartProvider({ children }) {
     localStorage.setItem('mi_tienda_cart', JSON.stringify(cart));
   }, [cart]);
 
-  // MODIFICADO: Ahora valida el stock y devuelve un booleano
+  // Validar stock y devolver booleano
   const addToCart = (product, quantity = 1) => {
-    let success = true; // Variable para saber si se pudo agregar
+    let success = true; 
 
     setCart(prev => {
       const existing = prev.find(item => item.id === product.id);
@@ -24,7 +24,7 @@ export function CartProvider({ children }) {
       // Validación de stock
       if (currentQuantity + quantity > product.stock_actual) {
         success = false;
-        return prev; // Retornamos el carrito sin cambios
+        return prev; 
       }
 
       if (existing) {
@@ -39,14 +39,13 @@ export function CartProvider({ children }) {
       setIsSidebarOpen(true);
     }
     
-    return success; // Devolvemos el resultado a la ProductCard
+    return success; 
   };
 
   const removeFromCart = (id) => {
     setCart(prev => prev.filter(item => item.id !== id));
   };
 
-  // MODIFICADO: Prevenimos que se exceda el stock desde el carrito lateral
   const updateQuantity = (id, quantity) => {
     if (quantity < 1) return;
     setCart(prev => prev.map(item => {
@@ -59,12 +58,17 @@ export function CartProvider({ children }) {
     }));
   };
 
+  // ---> ¡AQUÍ ESTÁ LA FUNCIÓN FALTANTE! <---
+  const clearCart = () => {
+    setCart([]); // Simplemente resetea el carrito a un arreglo vacío
+  };
+
   const cartTotal = cart.reduce((total, item) => total + (item.precio_venta * item.quantity), 0);
   const cartCount = cart.reduce((count, item) => count + item.quantity, 0);
 
   return (
     <CartContext.Provider value={{ 
-      cart, addToCart, removeFromCart, updateQuantity, 
+      cart, addToCart, removeFromCart, updateQuantity, clearCart, 
       cartTotal, cartCount, isSidebarOpen, setIsSidebarOpen 
     }}>
       {children}

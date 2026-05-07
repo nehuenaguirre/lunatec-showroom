@@ -7,8 +7,12 @@ export default function Success() {
   const { clearCart } = useContext(CartContext);
 
   useEffect(() => {
-    // Al entrar a esta página, el pago ya fue aprobado, así que limpiamos el carrito
-    clearCart();
+    // Escudo protector: Solo ejecuta la función si realmente existe en el contexto
+    if (typeof clearCart === 'function') {
+      clearCart();
+    } else {
+      console.warn("clearCart no está disponible en el CartContext");
+    }
   }, [clearCart]);
 
   return (
@@ -22,7 +26,7 @@ export default function Success() {
           Gracias por elegir LunaTec. Ya recibimos tu pedido y estamos preparando todo para vos.
         </p>
         <div className="space-y-3">
-          <Link to="/mi-cuenta" className="block w-full py-4 bg-brand-pink text-white font-bold rounded-xl shadow-lg hover:bg-brand-dark transition-all">
+          <Link to="/mi-cuenta" className="block w-full py-4 bg-gray-900 text-white font-bold rounded-xl shadow-lg hover:bg-black transition-all">
             Ver mis pedidos
           </Link>
           <Link to="/" className="block w-full py-4 bg-gray-100 text-gray-600 font-bold rounded-xl hover:bg-gray-200 transition-all flex items-center justify-center gap-2">
